@@ -1,0 +1,29 @@
+# ---- BACKEND ----
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+*.env
+
+# VSCode settings
+.vscode/
+
+# Models (trained AI models)
+models/
+*.pt
+*.pth
+*.h5
+*.pkl
+
+# Database files (optional)
+*.db
+*.sqlite3
+
+# Logs
+*.log
