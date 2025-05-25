@@ -248,7 +248,7 @@ def generate_confusion_matrix():
     plt.figure(figsize=(10, 8))
     cm = confusion_matrix(all_labels, all_preds, normalize='true')
     disp = ConfusionMatrixDisplay(confusion_matrix=cm,
-                                  display_labels=label_encoder.classes_)
+    display_labels=label_encoder.classes_)
     disp.plot(cmap='Blues', values_format='.2f', xticks_rotation=45)
     plt.tight_layout()
     plt.savefig('confusion_matrix.pdf')

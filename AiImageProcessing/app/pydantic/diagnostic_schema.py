@@ -1,4 +1,5 @@
 from pydantic import BaseModel, conint, EmailStr
+from typing import Dict
 
 class DiagnosticCreateFE(BaseModel):
     image_url: str
@@ -10,7 +11,7 @@ class DiagnosticCreateFE(BaseModel):
 class DiagnosticCreateAI(BaseModel):
     image_url: str
     user_id: int
-    result: str
+    result: str  # This will store the JSON string of class distribution
 
     class Config:
         from_attributes = True
@@ -18,5 +19,5 @@ class DiagnosticCreateAI(BaseModel):
 class DiagnosticResponse(BaseModel):
     id: int
     image_url: str
-    result: str
+    result: str  # This will store the JSON string of class distribution
     user_id: int
