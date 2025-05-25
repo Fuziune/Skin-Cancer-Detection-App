@@ -22,10 +22,10 @@ logging.basicConfig(level=logging.DEBUG)  # Enable debug logging
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins (change this in production)
-    allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allow all headers
+    allow_origins=["http://localhost:8081"],  # Specify your frontend URL
+    allow_credentials=False,  # Set to false since we're not using credentials
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Add validation error handler

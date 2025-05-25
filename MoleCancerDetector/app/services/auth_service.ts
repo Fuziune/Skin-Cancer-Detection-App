@@ -1,67 +1,111 @@
-import axios from 'axios';
+import { API_URL } from '../config';
+import { Platform } from 'react-native';
 
-const API_URL = 'http://127.0.0.1:8001/auth';
+interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  user: {
+    id: number;
+    email: string;
+    name: string;
+    role: string;
+  };
+}
+
+interface ErrorResponse {
+  detail: {
+    message: string;
+    error: string;
+  };
+}
 
 class AuthService {
-  async login(email: string, password: string) {
+  static async login(email: string, password: string): Promise<LoginResponse> {
+    console.log('AuthService: login called with email:', email);
     try {
-      const formData = new FormData();
-      formData.append('username', email);
-      formData.append('password', password);
+      let body;
+      let headers;
 
-      const response = await axios.post(`${API_URL}/login`, formData, {
-        headers: {
+      if (Platform.OS === 'web') {
+        // For web, use URLSearchParams
+        const params = new URLSearchParams();
+        params.append('username', email);
+        params.append('password', password);
+        body = params.toString();
+        headers = {
           'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
-
-      if (response.data.access_token) {
-        return {
-          ...response.data,
-          email,
-          name: response.data.name || email.split('@')[0],
-          role: response.data.role || 'patient'
+          'Accept': 'application/json',
+        };
+      } else {
+        // For native, use FormData
+        const formData = new FormData();
+        formData.append('username', email);
+        formData.append('password', password);
+        body = formData;
+        headers = {
+          'Accept': 'application/json',
         };
       }
-      throw new Error('Login failed: No access token received');
+
+      console.log('AuthService: Making API request to:', `${API_URL}/auth/login`);
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers,
+        body,
+        credentials: 'omit', // Don't include credentials to avoid CORS issues
+        mode: 'cors', // Enable CORS
+      });
+
+      console.log('AuthService: Response status:', response.status);
+      const data = await response.json();
+      console.log('AuthService: Response data:', data);
+
+      if (!response.ok) {
+        console.log('AuthService: Request failed with status:', response.status);
+        if (response.status === 401) {
+          const errorMessage = data.detail?.message || 'Invalid email or password';
+          console.log('AuthService: Throwing 401 error:', errorMessage);
+          throw new Error(errorMessage);
+        }
+        throw new Error(data.detail?.message || 'Login failed');
+      }
+
+      console.log('AuthService: Login successful');
+      return data;
     } catch (error: any) {
-      console.error('Login error:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.detail || 'Login failed. Please try again.');
+      console.log('AuthService: Error caught:', error);
+      if (error.message === 'Failed to fetch') {
+        throw new Error('Unable to connect to the server. Please check your internet connection.');
+      }
+      throw error;
     }
   }
 
-  async register(email: string, password: string, name: string) {
+  static async register(email: string, password: string, name: string): Promise<LoginResponse> {
     try {
-      const requestData = {
-        email,
-        password,
-        name,
-      };
-      
-      console.log('Sending registration request with data:', requestData);
-      
-      const response = await axios.post(`${API_URL}/register`, requestData, {
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          email,
+          password,
+          name,
+        }),
       });
 
-      console.log('Registration response:', response.data);
-      return response.data;
+      if (!response.ok) {
+        const errorData: ErrorResponse = await response.json();
+        throw new Error(errorData.detail.message);
+      }
+
+      return await response.json();
     } catch (error: any) {
-      console.error('Registration error details:', {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
-        requestData: { email, name } // Don't log password
-      });
-      
-      // Return a more detailed error message
-      const errorMessage = error.response?.data?.detail || 
-                          (error.response?.data?.errors ? JSON.stringify(error.response.data.errors) : 'Registration failed. Please try again.');
-      throw new Error(errorMessage);
+      console.error('Registration error:', error);
+      throw error;
     }
   }
 }
 
-export default new AuthService(); 
+export default AuthService; 

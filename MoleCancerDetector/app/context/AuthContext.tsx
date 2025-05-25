@@ -4,10 +4,16 @@ import { router } from 'expo-router';
 import AuthService from '../services/auth_service';
 
 type User = {
-  id: string;
-  email: string;
+  id: number;
   name: string;
+  email: string;
   role: string;
+};
+
+type LoginResponse = {
+  access_token: string;
+  token_type: string;
+  user: User;
 };
 
 type AuthContextType = {
@@ -30,19 +36,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadUser = async () => {
     try {
-      const [userData, token] = await Promise.all([
-        AsyncStorage.getItem('user'),
-        AsyncStorage.getItem('token')
-      ]);
-
-      if (userData && token) {
+      const userData = await AsyncStorage.getItem('user');
+      if (userData) {
         setUser(JSON.parse(userData));
-      } else {
-        setUser(null);
       }
     } catch (error) {
       console.error('Error loading user:', error);
-      setUser(null);
     } finally {
       setIsLoading(false);
     }
@@ -50,73 +49,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      setIsLoading(true);
+      console.log('AuthContext: signIn called');
       const response = await AuthService.login(email, password);
+      console.log('AuthContext: Login response received');
       
-      const userData = {
-        id: response.id,
-        email: response.email,
-        name: response.name,
-        role: response.role || 'patient'
-      };
-      
-      await Promise.all([
-        AsyncStorage.setItem('user', JSON.stringify(userData)),
-        AsyncStorage.setItem('token', response.access_token)
-      ]);
-      
-      setUser(userData);
-      router.replace('/(tabs)');
-    } catch (error) {
-      console.error('Error signing in:', error);
+      if (response.access_token) {
+        console.log('AuthContext: Token received, storing...');
+        await AsyncStorage.setItem('userToken', response.access_token);
+        setUser(response.user);
+        console.log('AuthContext: User state updated');
+      } else {
+        console.log('AuthContext: No token in response');
+        throw new Error('No token received from server');
+      }
+    } catch (error: any) {
+      console.log('AuthContext: Error during sign in:', error.message);
+      // Clear any existing token on failed login
+      await AsyncStorage.removeItem('userToken');
+      setUser(null);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
-      setIsLoading(true);
-      const response = await AuthService.register(email, password, name);
+      console.log('AuthContext: signUp called');
+      const response: LoginResponse = await AuthService.register(email, password, name);
       
-      // After successful registration, log the user in
-      const userData = {
-        id: response.id,
-        email: response.email,
-        name: response.name,
-        role: response.role || 'patient'
-      };
-      
-      await Promise.all([
-        AsyncStorage.setItem('user', JSON.stringify(userData)),
-        AsyncStorage.setItem('token', response.access_token)
-      ]);
-      
-      setUser(userData);
-      router.replace('/(tabs)');
-    } catch (error) {
-      console.error('Error signing up:', error);
+      if (response.access_token) {
+        console.log('AuthContext: Registration successful, storing data...');
+        const userData = {
+          id: response.user.id,
+          email: response.user.email,
+          name: response.user.name,
+          role: response.user.role
+        };
+        
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
+        await AsyncStorage.setItem('token', response.access_token);
+        setUser(userData);
+        console.log('AuthContext: User data stored successfully');
+      } else {
+        console.log('AuthContext: No token in response');
+        throw new Error('No token received from server');
+      }
+    } catch (error: any) {
+      console.log('AuthContext: Error during sign up:', error.message);
+      // Clear any existing data on error
+      await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('token');
+      setUser(null);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const signOut = async () => {
     try {
-      setIsLoading(true);
-      await Promise.all([
-        AsyncStorage.removeItem('user'),
-        AsyncStorage.removeItem('token')
-      ]);
+      await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('token');
       setUser(null);
       router.replace('/(auth)/login');
     } catch (error) {
       console.error('Error signing out:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 

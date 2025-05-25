@@ -14,12 +14,14 @@ function RootLayoutNav() {
     }
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inTabsGroup = segments[0] === '(tabs)';
 
-    if (!user && !inAuthGroup) {
-      // Redirect to login if not authenticated and not in auth group
-      router.replace('/(auth)/login');
-    } else if (user && inAuthGroup) {
-      // Redirect to home if authenticated and in auth group
+    // Only redirect if:
+    // 1. User is authenticated AND
+    // 2. Currently in auth group (login/register) AND
+    // 3. Not already in tabs group
+    if (user && inAuthGroup && !inTabsGroup) {
+      console.log('Navigating to tabs after successful auth');
       router.replace('/(tabs)');
     }
   }, [user, segments, isLoading]);

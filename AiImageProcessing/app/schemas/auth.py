@@ -21,13 +21,19 @@ class UserResponse(UserBase):
     class Config:
         from_attributes = True
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    id: str
+class UserInToken(BaseModel):
+    id: int
     email: str
     name: str
     role: str
+
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user: UserInToken
 
 class TokenData(BaseModel):
     email: Optional[str] = None 
