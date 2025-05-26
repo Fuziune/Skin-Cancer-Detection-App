@@ -1,4 +1,4 @@
-import { Text, View, StyleSheet, SafeAreaView, StatusBar } from 'react-native';
+import { Text, View, StyleSheet, SafeAreaView, StatusBar, Modal } from 'react-native';
 import Button from '@/components/Button';
 import * as ImagePicker from 'expo-image-picker';
 import DiagnosticService from '../services/user_service';
@@ -13,6 +13,7 @@ const PlaceHolderImage = require('@/assets/images/animated mole image.jpg')
 export default function Index() {
   const [selectedImage, setSelectImage] = useState<string>("");
   const [showAppOptions, setShowAppOptions] = useState<boolean>(false);
+  const [showPreview, setShowPreview] = useState<boolean>(false);
   const router = useRouter()
 
   useEffect(() => {
@@ -70,6 +71,10 @@ export default function Index() {
     await DiagnosticService.uploadImage(selectedImage, 1);
   };
 
+  const togglePreview = () => {
+    setShowPreview(!showPreview);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" />
@@ -88,7 +93,7 @@ export default function Index() {
             <View style={styles.optionsRow}>
               <IconButton icon="refresh" label="Reset" onPress={onReset} />
               <CircleButton onPress={onGetDiagnostic} />
-              <IconButton icon="save-alt" label="Save" onPress={onSaveImageAsync} />
+              <IconButton icon="search" label="Preview" onPress={togglePreview} />
             </View>
           </View>
         ) : (
@@ -97,6 +102,28 @@ export default function Index() {
             <Button label="Use this photo" onPress={() => setShowAppOptions(true)} />
           </View>
         )}
+
+        <Modal
+          visible={showPreview}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={togglePreview}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <ImageViewer 
+                imgSource={selectedImage ? { uri: selectedImage } : PlaceHolderImage} 
+                selectedImage={selectedImage} 
+              />
+              <IconButton 
+                icon="close" 
+                label="Close" 
+                onPress={togglePreview} 
+                style={styles.closeButton}
+              />
+            </View>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -152,5 +179,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     gap: 20,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    height: '80%',
+    backgroundColor: '#25292e',
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
   },
 });

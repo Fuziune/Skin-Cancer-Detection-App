@@ -10,7 +10,8 @@ from pydantic import ValidationError
 from app.databases.database import SessionLocal, engine, Base
 from app.controller.UserController import router as user_controller_router
 from app.controller.DiagnosticController import router as diagnostic_controller_router
-from app.routers import auth
+from app.routers import auth_routes
+from app.model import user_model
 
 # Initialize database tables
 Base.metadata.create_all(bind=engine)
@@ -43,9 +44,10 @@ def get_db():
     finally:
         db.close()
 
+# Include routers
 app.include_router(user_controller_router)
 app.include_router(diagnostic_controller_router)
-app.include_router(auth.router)
+app.include_router(auth_routes.router)
 
 # Function to get local IPv4 address
 def get_local_ip():

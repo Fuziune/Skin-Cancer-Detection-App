@@ -96,6 +96,9 @@ export default function RegisterScreen() {
               setError('');
             }}
             autoCapitalize="words"
+            autoComplete="name"
+            textContentType="name"
+            autoCorrect={false}
           />
 
           <TextInput
@@ -109,6 +112,9 @@ export default function RegisterScreen() {
             }}
             autoCapitalize="none"
             keyboardType="email-address"
+            autoComplete="email"
+            textContentType="emailAddress"
+            autoCorrect={false}
           />
 
           <TextInput
@@ -121,6 +127,9 @@ export default function RegisterScreen() {
               setError('');
             }}
             secureTextEntry
+            autoComplete="password-new"
+            textContentType="newPassword"
+            autoCorrect={false}
           />
 
           <Pressable

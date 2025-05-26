@@ -16,12 +16,14 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === '(auth)';
     const inTabsGroup = segments[0] === '(tabs)';
 
-    // Only redirect if:
-    // 1. User is authenticated AND
-    // 2. Currently in auth group (login/register) AND
-    // 3. Not already in tabs group
-    if (user && inAuthGroup && !inTabsGroup) {
-      console.log('Navigating to tabs after successful auth');
+    // If user is not authenticated and trying to access protected routes
+    if (!user && !inAuthGroup) {
+      console.log('Unauthorized access attempt, redirecting to login');
+      router.replace('/(auth)/login');
+    }
+    // If user is authenticated and in auth group (login/register)
+    else if (user && inAuthGroup) {
+      console.log('Authenticated user in auth group, redirecting to main');
       router.replace('/(tabs)');
     }
   }, [user, segments, isLoading]);

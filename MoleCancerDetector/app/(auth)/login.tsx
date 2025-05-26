@@ -109,6 +109,9 @@ export default function LoginScreen() {
               }}
               autoCapitalize="none"
               keyboardType="email-address"
+              autoComplete="email"
+              textContentType="emailAddress"
+              autoCorrect={false}
             />
           </View>
 

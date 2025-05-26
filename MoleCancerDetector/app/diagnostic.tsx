@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import { View, Text, Image, StyleSheet, SafeAreaView, StatusBar, TouchableOpacity, ScrollView, Dimensions } from "react-native";
+import { View, Text, Image, StyleSheet, SafeAreaView, StatusBar, TouchableOpacity, ScrollView, Dimensions, useWindowDimensions } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { BarChart } from 'react-native-chart-kit';
+import Button from '@/components/Button';
 
 const getDiagnosisDetails = (result: string) => {
   const details = {
@@ -61,7 +62,7 @@ const getDiagnosisDetails = (result: string) => {
 export default function DiagnosticScreen() {
   const params = useLocalSearchParams();
   const navigation = useNavigation();
-  const screenWidth = Dimensions.get('window').width;
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   
   const [predictionResult, setPredictionResult] = useState({
     predicted_class: 'unknown',
@@ -151,6 +152,38 @@ export default function DiagnosticScreen() {
     }]
   };
 
+  // Calculate chart dimensions based on screen size
+  const chartConfig = {
+    backgroundColor: '#2c2c2e',
+    backgroundGradientFrom: '#2c2c2e',
+    backgroundGradientTo: '#2c2c2e',
+    decimalPlaces: 2,
+    color: (opacity = 1) => `rgba(255, 211, 61, ${opacity})`,
+    labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+    style: {
+      borderRadius: 16,
+    },
+    barPercentage: 0.5,
+    propsForLabels: {
+      fontSize: 12,
+    },
+    propsForBackgroundLines: {
+      strokeWidth: 1,
+      stroke: '#3c3c3e',
+    },
+  };
+
+  const handleSaveReport = async () => {
+    try {
+      // Here you can implement the logic to save the report
+      // For now, we'll just show an alert
+      alert('Report saved successfully!');
+    } catch (error) {
+      console.error('Error saving report:', error);
+      alert('Failed to save report. Please try again.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" />
@@ -222,29 +255,31 @@ export default function DiagnosticScreen() {
               {Object.keys(predictionResult.probabilities).length > 0 && (
                 <View style={styles.chartContainer}>
                   <Text style={styles.chartTitle}>Probability Distribution</Text>
-                  <BarChart
-                    data={chartData}
-                    width={screenWidth - 40}
-                    height={220}
-                    yAxisSuffix="%"
-                    yAxisLabel=""
-                    chartConfig={{
-                      backgroundColor: '#2c2c2e',
-                      backgroundGradientFrom: '#2c2c2e',
-                      backgroundGradientTo: '#2c2c2e',
-                      decimalPlaces: 2,
-                      color: (opacity = 1) => `rgba(255, 211, 61, ${opacity})`,
-                      labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                      style: {
-                        borderRadius: 16,
-                      },
-                      barPercentage: 0.5,
-                    }}
-                    style={styles.chart}
-                    showValuesOnTopOfBars
-                  />
+                  <View style={styles.chartWrapper}>
+                    <BarChart
+                      data={chartData}
+                      width={screenWidth - 40}
+                      height={Math.min(screenHeight * 0.4, 300)}
+                      yAxisSuffix="%"
+                      yAxisLabel=""
+                      chartConfig={chartConfig}
+                      style={styles.chart}
+                      showValuesOnTopOfBars
+                      fromZero
+                      segments={5}
+                      yAxisInterval={1}
+                    />
+                  </View>
                 </View>
               )}
+
+              <View style={styles.saveButtonContainer}>
+                <Button 
+                  theme="primary" 
+                  label="Save Report" 
+                  onPress={handleSaveReport} 
+                />
+              </View>
             </React.Fragment>
           )}
         </ScrollView>
@@ -386,6 +421,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 20,
   },
+  chartWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 10,
+  },
   chartTitle: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -396,5 +436,11 @@ const styles = StyleSheet.create({
   chart: {
     marginVertical: 8,
     borderRadius: 16,
+  },
+  saveButtonContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 30,
+    marginBottom: 30,
   },
 });
