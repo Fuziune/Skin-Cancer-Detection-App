@@ -4,6 +4,8 @@ import { View, Text, Image, StyleSheet, SafeAreaView, StatusBar, TouchableOpacit
 import { Ionicons } from '@expo/vector-icons';
 import { BarChart } from 'react-native-chart-kit';
 import Button from '@/components/Button';
+import DiagnosticService from './services/user_service';
+import { useAuth } from './context/AuthContext';
 
 const getDiagnosisDetails = (result: string) => {
   const details = {
@@ -63,6 +65,7 @@ export default function DiagnosticScreen() {
   const params = useLocalSearchParams();
   const navigation = useNavigation();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { user } = useAuth();
   
   const [predictionResult, setPredictionResult] = useState({
     predicted_class: 'unknown',
@@ -77,11 +80,15 @@ export default function DiagnosticScreen() {
         const parsedResult = JSON.parse(params.result as string);
         console.log('Parsed result:', parsedResult);
 
-        // The actual diagnostic result is inside the 'result' string property
-        const diagnosticDataString = parsedResult.result;
+        // Handle both direct result and nested result formats
+        const diagnosticData = parsedResult.result || parsedResult;
 
-        if (diagnosticDataString) {
-          const diagnosticDataObject = JSON.parse(diagnosticDataString);
+        if (diagnosticData) {
+          // If diagnosticData is a string, parse it
+          const diagnosticDataObject = typeof diagnosticData === 'string' 
+            ? JSON.parse(diagnosticData)
+            : diagnosticData;
+
           console.log('Parsed diagnostic data object:', diagnosticDataObject);
 
           // Check if the diagnostic data contains an error
@@ -100,12 +107,12 @@ export default function DiagnosticScreen() {
             console.log('State updated with predicted_class:', diagnosticDataObject.predicted_class);
           }
         } else {
-           console.error('Diagnostic data string is empty or null');
-           setPredictionResult({
-             predicted_class: 'unknown',
-             probabilities: {}
-           });
-           console.log('State updated due to empty diagnostic data string:', 'unknown');
+          console.error('Diagnostic data is empty or null');
+          setPredictionResult({
+            predicted_class: 'unknown',
+            probabilities: {}
+          });
+          console.log('State updated due to empty diagnostic data:', 'unknown');
         }
       }
     } catch (e) {
@@ -175,8 +182,17 @@ export default function DiagnosticScreen() {
 
   const handleSaveReport = async () => {
     try {
-      // Here you can implement the logic to save the report
-      // For now, we'll just show an alert
+      if (!user) {
+        alert('Please log in to save reports');
+        return;
+      }
+      
+      await DiagnosticService.saveDiagnosticReport(
+        params.image_url as string,
+        predictionResult,
+        user.id
+      );
+      
       alert('Report saved successfully!');
     } catch (error) {
       console.error('Error saving report:', error);
@@ -273,13 +289,15 @@ export default function DiagnosticScreen() {
                 </View>
               )}
 
-              <View style={styles.saveButtonContainer}>
-                <Button 
-                  theme="primary" 
-                  label="Save Report" 
-                  onPress={handleSaveReport} 
-                />
-              </View>
+              {!params.fromHistory && (
+                <View style={styles.saveButtonContainer}>
+                  <Button 
+                    theme="primary" 
+                    label="Save Report" 
+                    onPress={handleSaveReport} 
+                  />
+                </View>
+              )}
             </React.Fragment>
           )}
         </ScrollView>

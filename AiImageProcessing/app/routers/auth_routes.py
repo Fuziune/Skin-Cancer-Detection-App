@@ -1,9 +1,11 @@
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+import logging
+import json
 from ..databases.database import get_db
-from ..schemas.user_models import UserCreate, Token
+from ..schemas.user_models import UserCreate, Token, LoginRequest
 from ..model.user_model import User
 from ..utils.security import verify_password, create_access_token, get_password_hash
 
@@ -59,9 +61,13 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         )
 
 @router.post("/login", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+async def login(
+    email: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
     # First check if user exists
-    user = db.query(User).filter(User.email == form_data.username).first()
+    user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -72,7 +78,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
         )
     
     # Then verify password
-    if not verify_password(form_data.password, user.password):
+    if not verify_password(password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={

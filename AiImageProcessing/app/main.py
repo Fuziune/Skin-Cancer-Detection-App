@@ -6,6 +6,8 @@ from fastapi import FastAPI, Depends, HTTPException, Request
 from starlette.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+from starlette.middleware.base import BaseHTTPMiddleware
+import time
 
 from app.databases.database import SessionLocal, engine, Base
 from app.controller.UserController import router as user_controller_router
@@ -21,12 +23,25 @@ app = FastAPI(title="MoleCancerDetector API", debug=True)
 
 logging.basicConfig(level=logging.DEBUG)  # Enable debug logging
 
+# Add request logging middleware
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        start_time = time.time()
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        logging.debug(f"Request: {request.method} {request.url.path} - Status: {response.status_code} - Time: {process_time:.2f}s")
+        return response
+
+app.add_middleware(RequestLoggingMiddleware)
+
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8081"],  # Specify your frontend URL
-    allow_credentials=False,  # Set to false since we're not using credentials
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # Add validation error handler

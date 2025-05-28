@@ -159,6 +159,96 @@ class DiagnosticService {
       throw error;
     }
   }
+
+  /**
+   * Saves a diagnostic report to the database.
+   * @param imageUrl - The URL of the analyzed image.
+   * @param result - The diagnostic result.
+   * @param userID - The user ID.
+   */
+  async saveDiagnosticReport(imageUrl: string, result: any, userID: number) {
+    try {
+      const headers = await this.getAuthHeaders();
+      const response = await fetch(`${this.baseUrl}/post`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image_url: imageUrl,
+          result: result,
+          user_id: userID,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Report saved successfully:", data);
+      return data;
+    } catch (error) {
+      console.error("Error saving report:", error);
+      throw error;
+    }
+  }
+
+  async deleteDiagnostic(diagnosticId: number) {
+    console.log('=== DIAGNOSTIC SERVICE DELETE START ===');
+    console.log('Making delete request for ID:', diagnosticId);
+    
+    try {
+      // Get auth headers
+      console.log('Getting auth headers...');
+      const headers = await this.getAuthHeaders();
+      console.log('Auth headers:', headers);
+      
+      // Construct URL
+      const url = `http://127.0.0.1:8001/diagnostic/${diagnosticId}`;
+      console.log('Delete URL:', url);
+      
+      // Make request
+      console.log('Sending DELETE request...');
+      console.log('Request details:', {
+        method: 'DELETE',
+        url: url,
+        headers: headers
+      });
+      
+      const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('Response received:');
+      console.log('- Status:', response.status);
+      console.log('- Status text:', response.statusText);
+      console.log('- Headers:', Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        console.log('Response not OK, attempting to read error data...');
+        const errorText = await response.text();
+        console.log('Error response body:', errorText);
+        throw new Error(`HTTP error! Status: ${response.status}, Body: ${errorText}`);
+      }
+      
+      console.log('=== DIAGNOSTIC SERVICE DELETE SUCCESS ===');
+      return true;
+    } catch (error: any) {
+      console.error('=== DIAGNOSTIC SERVICE DELETE ERROR ===');
+      console.error('Error details:', {
+        message: error?.message || 'Unknown error',
+        stack: error?.stack || 'No stack trace',
+        type: error?.constructor?.name || 'Unknown type'
+      });
+      throw error;
+    }
+  }
 }
 
 export default new DiagnosticService();

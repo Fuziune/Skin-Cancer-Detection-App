@@ -27,19 +27,18 @@ class AuthService {
       let headers;
 
       if (Platform.OS === 'web') {
-        // For web, use URLSearchParams
-        const params = new URLSearchParams();
-        params.append('username', email);
-        params.append('password', password);
-        body = params.toString();
+        // For web, use FormData
+        const formData = new FormData();
+        formData.append('email', email);
+        formData.append('password', password);
+        body = formData;
         headers = {
-          'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json',
         };
       } else {
         // For native, use FormData
         const formData = new FormData();
-        formData.append('username', email);
+        formData.append('email', email);
         formData.append('password', password);
         body = formData;
         headers = {

@@ -1,9 +1,17 @@
 from pydantic import BaseModel, conint, EmailStr
-from typing import Dict
+from typing import Dict, Any
 
 class DiagnosticCreateFE(BaseModel):
     image_url: str
     user_id: int
+
+    class Config:
+        from_attributes = True
+
+class DiagnosticSaveFE(BaseModel):
+    image_url: str
+    user_id: int
+    result: Dict[str, Any]  # This will store the diagnostic result from frontend
 
     class Config:
         from_attributes = True
