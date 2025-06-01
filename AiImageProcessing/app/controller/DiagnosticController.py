@@ -157,13 +157,22 @@ async def get_diagnosis(image_data: dict, db: Session = Depends(get_db)):
         if not image_url or not user_id:
             raise HTTPException(status_code=400, detail="Missing image_url or user_id")
         
-        # Get diagnosis from the service
-        result = await diagnostic_service.get_diagnosis(image_url)
+        # Initialize the diagnostic service
+        diagnostic_service = DiagnosticService(db)
+        
+        # Create the diagnostic request object
+        diagnostic_create = DiagnosticCreateFE(
+            image_url=image_url,
+            user_id=user_id
+        )
+        
+        # Get diagnosis using the existing function
+        result = diagnostic_service.post_diagnostic_with_mole_result(diagnostic_create)
         
         # Create diagnostic record
         diagnostic = Diagnostic(
             image_url=image_url,
-            result=json.dumps(result),
+            result=result.result,  # result is already a JSON string
             user_id=user_id
         )
         
@@ -172,7 +181,7 @@ async def get_diagnosis(image_data: dict, db: Session = Depends(get_db)):
         
         return {
             "diagnostic_id": db_diagnostic.id,
-            "result": result
+            "result": json.loads(result.result)  # Parse the JSON string back to dict
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

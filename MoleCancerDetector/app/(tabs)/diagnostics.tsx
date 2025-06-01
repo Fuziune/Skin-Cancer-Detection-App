@@ -4,12 +4,14 @@ import { useAuth } from '../context/AuthContext';
 import DiagnosticService from '../services/user_service';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Diagnostic {
   id: number;
   image_url: string;
   result: string;
-  user_id: number;
+  confidence: number;
+  created_at: string;
 }
 
 export default function DiagnosticsScreen() {
@@ -20,33 +22,83 @@ export default function DiagnosticsScreen() {
 
   const fetchDiagnostics = async () => {
     try {
-      if (!user) return;
-      
-      const response = await fetch(`http://127.0.0.1:8001/diagnostics/user/${user.id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch diagnostics');
+      if (!user) {
+        console.log('No user found, redirecting to login...');
+        router.replace('/login');
+        return;
       }
       
-      const data = await response.json();
+      console.log('=== FETCH DIAGNOSTICS START ===');
+      console.log('User ID:', user.id);
+      console.log('Current base URL:', DiagnosticService.getBaseUrl());
+      setLoading(true);
+      
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        console.log('No authentication token found, redirecting to login...');
+        router.replace('/login');
+        return;
+      }
+      
+      console.log('Calling DiagnosticService.getDiagnostics()...');
+      const diagnostics = await DiagnosticService.getDiagnostics();
+      console.log('Received diagnostics:', diagnostics);
+      
+      if (!Array.isArray(diagnostics)) {
+        console.error('Received non-array response:', diagnostics);
+        throw new Error('Invalid response format');
+      }
+      
       // Sort diagnostics in reverse order (newest first)
-      const sortedData = data.sort((a: Diagnostic, b: Diagnostic) => b.id - a.id);
+      const sortedData = diagnostics.sort((a: Diagnostic, b: Diagnostic) => b.id - a.id);
+      console.log('Sorted diagnostics:', sortedData);
+      
       setDiagnostics(sortedData);
+      console.log('=== FETCH DIAGNOSTICS SUCCESS ===');
     } catch (error) {
-      console.error('Error fetching diagnostics:', error);
+      console.error('=== FETCH DIAGNOSTICS ERROR ===');
+      console.error('Error type:', error instanceof Error ? error.constructor.name : typeof error);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      if (error instanceof Error && error.stack) {
+        console.error('Error stack:', error.stack);
+      }
+      
+      if (error instanceof Error && error.message === 'No authentication token found') {
+        console.log('No authentication token found, redirecting to login...');
+        router.replace('/login');
+      } else {
+        Alert.alert(
+          'Error',
+          'Failed to fetch diagnostics. Please check your connection and try again.'
+        );
+      }
     } finally {
       setLoading(false);
+      console.log('=== FETCH DIAGNOSTICS END ===');
     }
   };
 
   // Use useFocusEffect to refresh data when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
+      console.log('Screen focused, checking authentication...');
+      if (!user) {
+        console.log('No user found, redirecting to login...');
+        router.replace('/login');
+        return;
+      }
       fetchDiagnostics();
     }, [user])
   );
 
   // Initial load
   useEffect(() => {
+    console.log('Component mounted, checking authentication...');
+    if (!user) {
+      console.log('No user found, redirecting to login...');
+      router.replace('/login');
+      return;
+    }
     fetchDiagnostics();
   }, []);
 
@@ -54,48 +106,62 @@ export default function DiagnosticsScreen() {
     console.log('=== DELETE OPERATION START ===');
     console.log('handleDelete called with ID:', diagnosticId);
     
-    // Immediate confirmation for testing
-    if (window.confirm('Are you sure you want to delete this diagnostic?')) {
-      console.log('=== DELETE CONFIRMED ===');
-      console.log('User confirmed delete for ID:', diagnosticId);
-      
-      // Set loading state
-      console.log('Setting loading state to true');
-      setLoading(true);
-      
-      // Debug the service call
-      console.log('About to call DiagnosticService.deleteDiagnostic');
-      DiagnosticService.deleteDiagnostic(diagnosticId)
-        .then((result) => {
-          console.log('=== DELETE REQUEST SUCCESS ===');
-          console.log('Delete service returned:', result);
-          console.log('Refreshing diagnostics list...');
-          return fetchDiagnostics();
-        })
-        .then(() => {
-          console.log('=== LIST REFRESHED ===');
-          console.log('Successfully refreshed diagnostics list');
-          alert("Diagnostic deleted successfully");
-        })
-        .catch((error) => {
-          console.error('=== DELETE ERROR ===');
-          console.error('Error during delete operation:', error);
-          console.error('Error details:', {
-            message: error.message,
-            stack: error.stack,
-            type: error.constructor.name
-          });
-          alert("Failed to delete diagnostic");
-        })
-        .finally(() => {
-          console.log('=== OPERATION COMPLETE ===');
-          console.log('Setting loading state to false');
-          setLoading(false);
-        });
-    } else {
-      console.log('=== DELETE CANCELLED ===');
-      console.log('User cancelled the delete operation');
-    }
+    Alert.alert(
+      'Delete Diagnostic',
+      'Are you sure you want to delete this diagnostic?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => {
+            console.log('=== DELETE CANCELLED ===');
+            console.log('User cancelled the delete operation');
+          }
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            console.log('=== DELETE CONFIRMED ===');
+            console.log('User confirmed delete for ID:', diagnosticId);
+            
+            // Set loading state
+            console.log('Setting loading state to true');
+            setLoading(true);
+            
+            // Debug the service call
+            console.log('About to call DiagnosticService.deleteDiagnostic');
+            DiagnosticService.deleteDiagnostic(diagnosticId)
+              .then((result) => {
+                console.log('=== DELETE REQUEST SUCCESS ===');
+                console.log('Delete service returned:', result);
+                console.log('Refreshing diagnostics list...');
+                return fetchDiagnostics();
+              })
+              .then(() => {
+                console.log('=== LIST REFRESHED ===');
+                console.log('Successfully refreshed diagnostics list');
+                Alert.alert('Success', 'Diagnostic deleted successfully');
+              })
+              .catch((error) => {
+                console.error('=== DELETE ERROR ===');
+                console.error('Error during delete operation:', error);
+                console.error('Error details:', {
+                  message: error.message,
+                  stack: error.stack,
+                  type: error.constructor.name
+                });
+                Alert.alert('Error', 'Failed to delete diagnostic');
+              })
+              .finally(() => {
+                console.log('=== OPERATION COMPLETE ===');
+                console.log('Setting loading state to false');
+                setLoading(false);
+              });
+          }
+        }
+      ]
+    );
   };
 
   const renderDiagnosticItem = ({ item }: { item: Diagnostic }) => {
@@ -147,6 +213,14 @@ export default function DiagnosticsScreen() {
       </View>
     );
   };
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.loadingText}>Please log in to view diagnostics</Text>
+      </View>
+    );
+  }
 
   if (loading) {
     return (

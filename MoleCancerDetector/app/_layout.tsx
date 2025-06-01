@@ -2,6 +2,8 @@ import { Stack } from 'expo-router';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useEffect } from 'react';
 import { useRouter, useSegments } from 'expo-router';
+import authService from './services/auth_service';
+import diagnosticService from './services/user_service';
 
 function RootLayoutNav() {
   const { user, isLoading } = useAuth();
@@ -43,6 +45,22 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    // Initialize services
+    const initializeServices = async () => {
+      try {
+        console.log('Initializing services...');
+        await authService.initialize();
+        await diagnosticService.initialize();
+        console.log('Services initialized successfully');
+      } catch (error) {
+        console.error('Error initializing services:', error);
+      }
+    };
+
+    initializeServices();
+  }, []);
+
   return (
     <AuthProvider>
       <RootLayoutNav />

@@ -6,6 +6,7 @@ import { BarChart } from 'react-native-chart-kit';
 import Button from '@/components/Button';
 import DiagnosticService from './services/user_service';
 import { useAuth } from './context/AuthContext';
+import LoadingScreen from './components/LoadingScreen';
 
 const getDiagnosisDetails = (result: string) => {
   const details = {
@@ -67,67 +68,69 @@ export default function DiagnosticScreen() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { user } = useAuth();
   
+  const [isLoading, setIsLoading] = useState(true);
   const [predictionResult, setPredictionResult] = useState({
     predicted_class: 'unknown',
     probabilities: {}
   });
 
   useEffect(() => {
-    // Parse the result JSON string with proper error handling
-    try {
-      if (params.result) {
-        console.log('Raw result:', params.result);
-        const parsedResult = JSON.parse(params.result as string);
-        console.log('Parsed result:', parsedResult);
+    const processDiagnostic = async () => {
+      try {
+        if (params.result) {
+          console.log('Raw result:', params.result);
+          const parsedResult = JSON.parse(params.result as string);
+          console.log('Parsed result:', parsedResult);
 
-        // Handle both direct result and nested result formats
-        const diagnosticData = parsedResult.result || parsedResult;
+          // Handle both direct result and nested result formats
+          const diagnosticData = parsedResult.result || parsedResult;
 
-        if (diagnosticData) {
-          // If diagnosticData is a string, parse it
-          const diagnosticDataObject = typeof diagnosticData === 'string' 
-            ? JSON.parse(diagnosticData)
-            : diagnosticData;
+          if (diagnosticData) {
+            // If diagnosticData is a string, parse it
+            const diagnosticDataObject = typeof diagnosticData === 'string' 
+              ? JSON.parse(diagnosticData)
+              : diagnosticData;
 
-          console.log('Parsed diagnostic data object:', diagnosticDataObject);
+            console.log('Parsed diagnostic data object:', diagnosticDataObject);
 
-          // Check if the diagnostic data contains an error
-          if (diagnosticDataObject.error) {
-            console.error('Diagnostic error:', diagnosticDataObject.error);
-            setPredictionResult({
-              predicted_class: 'error',
-              probabilities: {}
-            });
-            console.log('State updated after error:', 'error');
-          } else {
-            setPredictionResult({
-              predicted_class: diagnosticDataObject.predicted_class || 'unknown',
-              probabilities: diagnosticDataObject.probabilities || {}
-            });
-            console.log('State updated with predicted_class:', diagnosticDataObject.predicted_class);
+            // Check if the diagnostic data contains an error
+            if (diagnosticDataObject.error) {
+              console.error('Diagnostic error:', diagnosticDataObject.error);
+              setPredictionResult({
+                predicted_class: 'error',
+                probabilities: {}
+              });
+            } else {
+              setPredictionResult({
+                predicted_class: diagnosticDataObject.predicted_class || 'unknown',
+                probabilities: diagnosticDataObject.probabilities || {}
+              });
+            }
           }
-        } else {
-          console.error('Diagnostic data is empty or null');
-          setPredictionResult({
-            predicted_class: 'unknown',
-            probabilities: {}
-          });
-          console.log('State updated due to empty diagnostic data:', 'unknown');
         }
+      } catch (e) {
+        console.error('Error parsing result:', e);
+        if (params.result) {
+          setPredictionResult(prevState => ({
+            ...prevState,
+            predicted_class: params.result as string
+          }));
+        }
+      } finally {
+        // Add a small delay to ensure smooth transition
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 1000);
       }
-    } catch (e) {
-      console.error('Error parsing result:', e);
-      // If parsing fails, try to use the raw result
-      if (params.result) {
-        setPredictionResult(prevState => ({
-          ...prevState,
-          predicted_class: params.result as string
-        }));
-        console.log('State updated with raw result:', params.result);
-      }
-    }
-  }, [params.result]); // Re-run effect when params.result changes
-  
+    };
+
+    processDiagnostic();
+  }, [params.result]);
+
+  if (isLoading) {
+    return <LoadingScreen message="Analyzing your mole..." />;
+  }
+
   const diagnosisDetails = getDiagnosisDetails(predictionResult.predicted_class);
   
   // Handle image URL with proper base64 checking

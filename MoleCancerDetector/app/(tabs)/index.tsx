@@ -1,47 +1,82 @@
-import { Text, View, StyleSheet, SafeAreaView, StatusBar, Modal } from 'react-native';
-import Button from '@/components/Button';
+import { Text, View, StyleSheet, SafeAreaView, StatusBar, Modal, Platform } from 'react-native';
+import Button from '../../components/Button';
 import * as ImagePicker from 'expo-image-picker';
 import DiagnosticService from '../services/user_service';
 import { useState, useEffect } from 'react';
-import IconButton from '@/components/IconButton';
-import CircleButton from '@/components/CircleButton';
-import ImageViewer from '@/components/ImageViewer';
+import IconButton from '../../components/IconButton';
+import CircleButton from '../../components/CircleButton';
+import ImageViewer from '../components/ImageViewer';
 import { useRouter } from "expo-router";
 
-const PlaceHolderImage = require('@/assets/images/animated mole image.jpg')
+const PlaceHolderImage = require('../../assets/images/animated mole image.jpg');
 
 export default function Index() {
-  const [selectedImage, setSelectImage] = useState<string>("");
+  const [selectedImage, setSelectedImage] = useState<string>("");
   const [showAppOptions, setShowAppOptions] = useState<boolean>(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
-  const router = useRouter()
+  const router = useRouter();
 
   useEffect(() => {
     // Initialize the DiagnosticService when component mounts
+    console.log('Initializing DiagnosticService...');
+    DiagnosticService.setBaseUrl("http://172.20.10.4:8001");
     DiagnosticService.initialize();
   }, []);
 
-  const pickImageAsync = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      quality: 1,
-    });
+  // Debug effect to log state changes
+  useEffect(() => {
+    console.log('Selected image changed:', selectedImage);
+  }, [selectedImage]);
 
-    if (!result.canceled) {
-      setSelectImage(result.assets[0].uri)
-      setShowAppOptions(true)
-    } else {
-      alert('You did not select any image.');
+  const pickImageAsync = async () => {
+    try {
+      console.log('Starting image picker...');
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.5,
+        base64: true,
+        exif: false,
+      });
+
+      console.log('Image picker result:', JSON.stringify(result, null, 2));
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const imageUri = result.assets[0].uri;
+        console.log('Raw image URI:', imageUri);
+        
+        // For iOS, ensure we have the correct file:// prefix
+        const processedUri = Platform.OS === 'ios' 
+          ? imageUri.startsWith('file://') ? imageUri : `file://${imageUri}`
+          : imageUri;
+          
+        console.log('Processed image URI:', processedUri);
+        setSelectedImage(processedUri);
+        setShowAppOptions(true);
+      } else {
+        console.log('Image selection was canceled or no image was selected');
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      alert('Failed to pick image. Please try again.');
     }
   };
 
   const onReset = () => {
+    console.log('Resetting image selection');
+    setSelectedImage("");
     setShowAppOptions(false);
   };
 
   const onGetDiagnostic = async () => {
     try {
+      if (!selectedImage) {
+        alert('Please select an image first');
+        return;
+      }
+
+      console.log('Getting diagnostic for image:', selectedImage);
       const diagnostic = await DiagnosticService.makeDiagnostics(selectedImage, 1);
       
       if (!diagnostic) {
@@ -63,15 +98,21 @@ export default function Index() {
   };
 
   const onSaveImageAsync = async () => {
-    localStorage.setItem("image_url", JSON.stringify(selectedImage));
     if (!selectedImage) {
       alert("No image selected!");
       return;
     }
-    await DiagnosticService.uploadImage(selectedImage, 1);
+    try {
+      await DiagnosticService.uploadImage(selectedImage, 1);
+      alert("Image saved successfully!");
+    } catch (error) {
+      console.error("Error saving image:", error);
+      alert("Failed to save image. Please try again.");
+    }
   };
 
   const togglePreview = () => {
+    console.log('Toggling preview, current image:', selectedImage);
     setShowPreview(!showPreview);
   };
 
@@ -85,7 +126,10 @@ export default function Index() {
         </View>
         
         <View style={styles.imageContainer}>
-          <ImageViewer imgSource={PlaceHolderImage} selectedImage={selectedImage} />
+          <ImageViewer 
+            imgSource={PlaceHolderImage}
+            selectedImage={selectedImage}
+          />
         </View>
 
         {showAppOptions ? (
@@ -112,8 +156,8 @@ export default function Index() {
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
               <ImageViewer 
-                imgSource={selectedImage ? { uri: selectedImage } : PlaceHolderImage} 
-                selectedImage={selectedImage} 
+                imgSource={PlaceHolderImage}
+                selectedImage={selectedImage}
               />
               <IconButton 
                 icon="close" 

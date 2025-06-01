@@ -69,6 +69,10 @@ def get_local_ip():
     """Finds the local IPv4 address of the machine."""
     return socket.gethostbyname(socket.gethostname())
 
+@app.get("/auth/health")
+async def health_check():
+    return {"status": "ok"}
+
 if __name__ == "__main__":
     local_ip = get_local_ip()  # Get the current local IP
     print(f"Running on: http://{local_ip}:8001")

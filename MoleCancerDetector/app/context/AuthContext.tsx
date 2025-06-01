@@ -56,7 +56,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (response.access_token) {
         console.log('AuthContext: Token received, storing...');
         await AsyncStorage.setItem('userToken', response.access_token);
-        setUser(response.user);
+        const userData = {
+          id: response.user.id,
+          email: response.user.email,
+          name: response.user.name,
+          role: response.user.role
+        };
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
         console.log('AuthContext: User state updated');
       } else {
         console.log('AuthContext: No token in response');
@@ -66,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('AuthContext: Error during sign in:', error.message);
       // Clear any existing token on failed login
       await AsyncStorage.removeItem('userToken');
+      await AsyncStorage.removeItem('user');
       setUser(null);
       throw error;
     }
@@ -86,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         
         await AsyncStorage.setItem('user', JSON.stringify(userData));
-        await AsyncStorage.setItem('token', response.access_token);
+        await AsyncStorage.setItem('userToken', response.access_token);
         setUser(userData);
         console.log('AuthContext: User data stored successfully');
       } else {
@@ -97,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('AuthContext: Error during sign up:', error.message);
       // Clear any existing data on error
       await AsyncStorage.removeItem('user');
-      await AsyncStorage.removeItem('token');
+      await AsyncStorage.removeItem('userToken');
       setUser(null);
       throw error;
     }
@@ -106,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       await AsyncStorage.removeItem('user');
-      await AsyncStorage.removeItem('token');
+      await AsyncStorage.removeItem('userToken');
       setUser(null);
       router.replace('/(auth)/login');
     } catch (error) {
