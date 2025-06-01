@@ -60,21 +60,40 @@ class AuthService {
 
   async register(email: string, password: string, name: string) {
     try {
+      console.log('AuthService: register called with:', { email, name });
+      
+      const requestBody = {
+        email: email,
+        name: name,
+        password: password
+      };
+
+      console.log('Sending registration request with body:', requestBody);
+
       const response = await fetch(`${this.baseUrl}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
-        body: JSON.stringify({ email, password, name }),
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+        const errorData = await response.json();
+        console.error('Registration failed with status:', response.status);
+        console.error('Error response:', errorData);
+        
+        // Extract the error message from the response
+        const errorMessage = errorData.detail?.[0]?.msg || 'Registration failed';
+        throw new Error(errorMessage);
       }
 
-      return await response.json();
-    } catch (error) {
-      console.error('Registration error:', error);
+      const data = await response.json();
+      console.log('AuthService: Registration successful');
+      return data;
+    } catch (error: any) {
+      console.error('AuthService: Registration error:', error);
       throw error;
     }
   }

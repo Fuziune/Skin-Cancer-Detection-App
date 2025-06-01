@@ -10,12 +10,6 @@ type User = {
   role: string;
 };
 
-type LoginResponse = {
-  access_token: string;
-  token_type: string;
-  user: User;
-};
-
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
@@ -31,30 +25,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadUser();
-  }, []);
+    let isMounted = true;
 
-  const loadUser = async () => {
-    try {
-      const userData = await AsyncStorage.getItem('user');
-      if (userData) {
-        setUser(JSON.parse(userData));
+    const loadUser = async () => {
+      if (!isMounted) return;
+
+      try {
+        const [userData, token] = await Promise.all([
+          AsyncStorage.getItem('user'),
+          AsyncStorage.getItem('userToken')
+        ]);
+
+        if (!userData || !token) {
+          if (isMounted) {
+            setUser(null);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        try {
+          const parsedUser = JSON.parse(userData);
+          if (isMounted) {
+            setUser(parsedUser);
+            setIsLoading(false);
+          }
+        } catch (parseError) {
+          console.error('Error parsing user data:', parseError);
+          await AsyncStorage.removeItem('user');
+          await AsyncStorage.removeItem('userToken');
+          if (isMounted) {
+            setUser(null);
+            setIsLoading(false);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user:', error);
+        if (isMounted) {
+          setUser(null);
+          setIsLoading(false);
+        }
       }
-    } catch (error) {
-      console.error('Error loading user:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
+
+    loadUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('AuthContext: signIn called');
+      setIsLoading(true);
       const response = await AuthService.login(email, password);
-      console.log('AuthContext: Login response received');
       
       if (response.access_token) {
-        console.log('AuthContext: Token received, storing...');
         await AsyncStorage.setItem('userToken', response.access_token);
         const userData = {
           id: response.user.id,
@@ -64,25 +90,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         await AsyncStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
-        console.log('AuthContext: User state updated');
       } else {
-        console.log('AuthContext: No token in response');
         throw new Error('No token received from server');
       }
     } catch (error: any) {
-      console.log('AuthContext: Error during sign in:', error.message);
-      // Clear any existing token on failed login
       await AsyncStorage.removeItem('userToken');
       await AsyncStorage.removeItem('user');
       setUser(null);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
       console.log('AuthContext: signUp called');
-      const response: LoginResponse = await AuthService.register(email, password, name);
+      const response = await AuthService.register(email, password, name);
       
       if (response.access_token) {
         console.log('AuthContext: Registration successful, storing data...');
@@ -113,12 +137,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      setIsLoading(true);
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('userToken');
       setUser(null);
-      router.replace('/(auth)/login');
     } catch (error) {
       console.error('Error signing out:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 

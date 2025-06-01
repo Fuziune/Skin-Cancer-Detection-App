@@ -1,38 +1,63 @@
-import { Stack } from 'expo-router';
+import { Stack, Redirect } from 'expo-router';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSegments } from 'expo-router';
 import authService from './services/auth_service';
 import diagnosticService from './services/user_service';
+import { View, ActivityIndicator } from 'react-native';
 
 function RootLayoutNav() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Initialize services only once
   useEffect(() => {
-    if (isLoading) {
-      return;
-    }
+    let isMounted = true;
+
+    const initialize = async () => {
+      if (!isMounted) return;
+      
+      try {
+        await authService.initialize();
+        await diagnosticService.initialize();
+      } catch (error) {
+        console.error('Error initializing services:', error);
+      } finally {
+        if (isMounted) {
+          setIsInitialized(true);
+        }
+      }
+    };
+
+    initialize();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Handle auth state changes
+  useEffect(() => {
+    if (!isInitialized || isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    const inTabsGroup = segments[0] === '(tabs)';
 
-    // If user is not authenticated and trying to access protected routes
     if (!user && !inAuthGroup) {
-      console.log('Unauthorized access attempt, redirecting to login');
       router.replace('/(auth)/login');
-    }
-    // If user is authenticated and in auth group (login/register)
-    else if (user && inAuthGroup) {
-      console.log('Authenticated user in auth group, redirecting to main');
+    } else if (user && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [user, segments, isLoading]);
+  }, [user, segments, isLoading, isInitialized]);
 
-  // Show nothing while loading
-  if (isLoading) {
-    return null;
+  // Show loading indicator while initializing or loading auth state
+  if (!isInitialized || isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#ffd33d" />
+      </View>
+    );
   }
 
   return (
@@ -45,22 +70,6 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  useEffect(() => {
-    // Initialize services
-    const initializeServices = async () => {
-      try {
-        console.log('Initializing services...');
-        await authService.initialize();
-        await diagnosticService.initialize();
-        console.log('Services initialized successfully');
-      } catch (error) {
-        console.error('Error initializing services:', error);
-      }
-    };
-
-    initializeServices();
-  }, []);
-
   return (
     <AuthProvider>
       <RootLayoutNav />
