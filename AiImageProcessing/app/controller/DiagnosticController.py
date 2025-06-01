@@ -102,9 +102,59 @@ def delete_diagnostic_route(diagnostic_id: int, db: Session = Depends(get_db)):
 
 @router.post("/diagnostic/get_diagnosis", response_model=DiagnosticCreateAI)
 def set_diagnosis_route(diagnostic_create: DiagnosticCreateFE, db: Session = Depends(get_db)):
-    diagnosis_service = DiagnosticService(db)
-    result = diagnosis_service.post_diagnostic_with_mole_result(diagnostic_create)
-    return result
+    try:
+        # Initialize the diagnostic service
+        diagnostic_service = DiagnosticService(db)
+        temp_path = None
+        
+        try:
+            # We require base64 data
+            if not diagnostic_create.image_data:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Image data in base64 format is required"
+                )
+            
+            import base64
+            import tempfile
+            import os
+            
+            # Decode base64 data
+            image_data = base64.b64decode(diagnostic_create.image_data)
+            
+            # Create a temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
+                temp_file.write(image_data)
+                temp_path = temp_file.name
+            
+            # Create a new diagnostic object with the temporary file path
+            diagnostic_create = DiagnosticCreateFE(
+                image_url=temp_path,  # Use the temporary file path
+                user_id=diagnostic_create.user_id,
+                image_data=None  # Clear the base64 data since we're using the file
+            )
+            
+            # Get diagnosis using the updated diagnostic_create object
+            result = diagnostic_service.post_diagnostic_with_mole_result(diagnostic_create)
+            
+            # Update the result's image_url to be the original URL
+            result.image_url = diagnostic_create.image_url
+            
+            return result
+            
+        finally:
+            # Clean up the temporary file if it was created
+            if temp_path and os.path.exists(temp_path):
+                try:
+                    os.unlink(temp_path)
+                except Exception as e:
+                    print(f"Error cleaning up temporary file: {e}")
+            
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
 
 @router.post("/post")
 async def create_diagnostic_endpoint(
@@ -147,33 +197,33 @@ def delete_diagnostic_endpoint(diagnostic_id: int, db: Session = Depends(get_db)
         raise HTTPException(status_code=404, detail="Diagnostic not found")
     return {"message": "Diagnostic deleted successfully"}
 
-@router.post("/get_diagnosis")
-async def get_diagnosis(image_data: dict, db: Session = Depends(get_db)):
+@router.post("/get_diagnosis", response_model=DiagnosticCreateAI)
+async def get_diagnosis(diagnostic_create: DiagnosticCreateFE, db: Session = Depends(get_db)):
     try:
-        # Extract image URL and user ID from the request
-        image_url = image_data.get("image_url")
-        user_id = image_data.get("user_id")
-        
-        if not image_url or not user_id:
-            raise HTTPException(status_code=400, detail="Missing image_url or user_id")
-        
         # Initialize the diagnostic service
         diagnostic_service = DiagnosticService(db)
         
-        # Create the diagnostic request object
+        if not diagnostic_create.image_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Image data in base64 format is required"
+            )
+        
+        # Create the diagnostic request object with base64 data
         diagnostic_create = DiagnosticCreateFE(
-            image_url=image_url,
-            user_id=user_id
+            image_url=f"data:image/jpeg;base64,{diagnostic_create.image_data}",  # Use base64 data as image_url
+            user_id=diagnostic_create.user_id,
+            image_data=None  # Clear the base64 data since we're using it as image_url
         )
         
         # Get diagnosis using the existing function
         result = diagnostic_service.post_diagnostic_with_mole_result(diagnostic_create)
         
-        # Create diagnostic record
+        # Create diagnostic record with original image_url
         diagnostic = Diagnostic(
-            image_url=image_url,
+            image_url=diagnostic_create.image_url,  # Store the original image_url
             result=result.result,  # result is already a JSON string
-            user_id=user_id
+            user_id=diagnostic_create.user_id
         )
         
         # Save to database
@@ -181,7 +231,10 @@ async def get_diagnosis(image_data: dict, db: Session = Depends(get_db)):
         
         return {
             "diagnostic_id": db_diagnostic.id,
-            "result": json.loads(result.result)  # Parse the JSON string back to dict
+            "result": result.result
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )

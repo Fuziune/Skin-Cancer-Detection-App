@@ -148,9 +148,7 @@ class DiagnosticService {
         throw new Error('No image URI provided');
       }
 
-      // Convert image to base64 using platform-specific method
-      const base64 = await this.convertImageToBase64(uri);
-
+      console.log('Processing image URI:', uri);
       const headers = await this.getAuthHeaders();
       const requestHeaders = {
         ...headers,
@@ -158,15 +156,21 @@ class DiagnosticService {
         'Accept': 'application/json'
       };
 
+      // Convert image to base64
+      const base64 = await this.convertImageToBase64(uri);
+
       console.log('Making diagnostic request to:', `${this.baseUrl}/diagnostic/get_diagnosis`);
+
+      const requestBody = {
+        image_url: uri,
+        image_data: base64,
+        user_id: userID
+      };
 
       const response = await fetch(`${this.baseUrl}/diagnostic/get_diagnosis`, {
         method: 'POST',
         headers: requestHeaders,
-        body: JSON.stringify({
-          image_url: uri,
-          user_id: userID
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {

@@ -56,6 +56,9 @@ def predict_image(image_path):
             base64_data = image_path.split(",")[1]  # Extract base64 data
             image_data = base64.b64decode(base64_data)  # Decode base64
             image = Image.open(BytesIO(image_data)).convert("RGB")
+        elif image_path.startswith("file://"):
+            # This is a file URL, we should not try to open it directly
+            raise Exception("File URLs are not supported. Please provide base64 data instead.")
         else:
             # Load from local file
             image = Image.open(image_path).convert("RGB")

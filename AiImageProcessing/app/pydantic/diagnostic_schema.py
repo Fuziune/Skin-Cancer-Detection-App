@@ -1,9 +1,10 @@
-from pydantic import BaseModel, conint, EmailStr
-from typing import Dict, Any
+from pydantic import BaseModel, conint, EmailStr, Field
+from typing import Dict, Any, Optional
 
 class DiagnosticCreateFE(BaseModel):
-    image_url: str
+    image_url: Optional[str] = Field(None, description="Optional image URL")
     user_id: int
+    image_data: Optional[str] = Field(None, description="Optional base64 image data")
 
     class Config:
         from_attributes = True
