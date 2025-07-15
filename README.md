@@ -25,10 +25,10 @@ A cross-platform mobile application and backend system for skin cancer detection
 ![HomeScreen](MoleCancerDetector/assets/images/home_tab.jpg)
 
 ### 🔬 Diagnostic Result
-![Diagnostic](assets/images/diagnostic_result1.jpg)
+![Diagnostic](MoleCancerDetector/assets/images/diagnostic_result1.jpg)
 
 ### 📊 Diagnosis Probability Chart
-![Diagnostic Graphic](assets/images/diagnostic_result_bottom.png)
+![Diagnostic Graphic](MoleCancerDetector/assets/images/diagnostic_result_bottom.png)
 
 
 ⚙️ Tech Stack
