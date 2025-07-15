@@ -22,7 +22,7 @@ A cross-platform mobile application and backend system for skin cancer detection
 ## 📱 App Screenshots
 
 ### 🏠 Home Screen
-![HomeScreen](assets/images/home_tab.jpg)
+![HomeScreen](MoleCancerDetector/assets/images/home_tab.jpg)
 
 ### 🔬 Diagnostic Result
 ![Diagnostic](assets/images/diagnostic_result1.jpg)
