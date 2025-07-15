@@ -19,7 +19,11 @@ A cross-platform mobile application and backend system for skin cancer detection
 
 ⚠️ Visual recommendations per diagnosis type
 
-🖼️ App Screenshots
+🖼️ App Screenshots:
+
+![HomeScreen] (C:\Users\ioan1\Desktop\Licenta\MoleCancerDetector\assets\images\home_tab.jpg)
+![Diagnostic] (C:\Users\ioan1\Desktop\Licenta\MoleCancerDetector\assets\images\diagnostic_result1.jpg)
+![Diagnostic_graphic] (C:\Users\ioan1\Desktop\Licenta\MoleCancerDetector\assets\images\diagnostic_result_bottom.png)
 
 ⚙️ Tech Stack
 Frontend (React Native + Expo)
@@ -118,7 +122,3 @@ This application is intended for educational purposes and should not replace pro
 
 👤 Author
 Built by Ioan Istrate as part of a Bachelor’s thesis on AI-powered dermatological diagnosis.
-
-Would you like me to include instructions for Docker or deployment to a cloud platform (like Vercel or Render)?
-
-Ask ChatGPT
